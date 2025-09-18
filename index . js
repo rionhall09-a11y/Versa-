@@ -1,0 +1,36 @@
+import { Client, GatewayIntentBits } from "discord.js";
+import { addMessageActivity, getTrackedRoles, initializeDatabase } from "./db.js";
+
+const TOKEN = process.env.TOKEN?.replace(/^Bot\s+/i, '').trim();
+const CLIENT_ID = process.env.CLIENT_ID;
+const TARGET_GUILD_ID = process.env.TARGET_GUILD_ID;
+
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
+});
+
+client.once("ready", async () => {
+  console.log(`💎 Bot online as ${client.user.tag}`);
+  if (initializeDatabase) await initializeDatabase();
+});
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.guild) return;
+
+  try {
+    const roles = await getTrackedRoles(message.guild.id);
+    for (const role of roles) {
+      if (message.member.roles.cache.has(role.role_id)) {
+        await addMessageActivity(message.guild.id, message.author.id, role.role_id);
+      }
+    }
+  } catch (err) {
+    console.error("❌ Error tracking message:", err);
+  }
+});
+
+client.login(TOKEN);
