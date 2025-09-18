@@ -1,0 +1,76 @@
+import { db } from "./drizzle.js";
+import { user_activity, tracked_roles, vc_sessions } from "./schema.js";
+import { eq, and, sql } from "drizzle-orm";
+
+// Message tracking
+export async function addMessageActivity(guildId, userId, roleId) {
+  const existing = await db
+    .select()
+    .from(user_activity)
+    .where(
+      and(
+        eq(user_activity.guild_id, guildId),
+        eq(user_activity.user_id, userId),
+        eq(user_activity.role_id, roleId)
+      )
+    );
+
+  if (existing.length > 0) {
+    await db.update(user_activity)
+      .set({
+        message_count: sql`${user_activity.message_count} + 1`,
+        total_score: sql`${user_activity.total_score} + 1`,
+        last_active: sql`CURRENT_TIMESTAMP`
+      })
+      .where(
+        and(
+          eq(user_activity.guild_id, guildId),
+          eq(user_activity.user_id, userId),
+          eq(user_activity.role_id, roleId)
+        )
+      );
+  } else {
+    await db.insert(user_activity).values({
+      guild_id: guildId,
+      user_id: userId,
+      role_id: roleId,
+      message_count: 1,
+      total_score: '1'
+    });
+  }
+}
+
+// Get all active tracked roles
+export async function getTrackedRoles(guildId) {
+  return await db
+    .select()
+    .from(tracked_roles)
+    .where(
+      and(
+        eq(tracked_roles.guild_id, guildId),
+        eq(tracked_roles.is_active, true)
+      )
+    );
+}
+
+// Add tracked role if missing
+export async function addTrackedRole(guildId, roleId, roleName) {
+  try {
+    const result = await db.insert(tracked_roles)
+      .values({ guild_id: guildId, role_id: roleId, role_name: roleName })
+      .returning();
+    return result[0];
+  } catch (err) {
+    const result = await db.update(tracked_roles)
+      .set({ is_active: true, role_name: roleName })
+      .where(and(eq(tracked_roles.guild_id, guildId), eq(tracked_roles.role_id, roleId)))
+      .returning();
+    return result[0];
+  }
+}
+
+// Optional: initialize database tables if needed
+export async function initializeDatabase() {
+  // Example: call drizzle-kit or run raw SQL to create tables
+  console.log("🔹 Database initialization complete (if not already).");
+}
