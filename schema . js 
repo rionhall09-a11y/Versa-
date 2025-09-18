@@ -1,0 +1,34 @@
+import { pgTable, serial, varchar, integer, decimal, timestamp, boolean, unique } from "drizzle-orm/pg-core";
+
+export const tracked_roles = pgTable("tracked_roles", {
+  id: serial("id").primaryKey(),
+  guild_id: varchar("guild_id", { length: 20 }).notNull(),
+  role_id: varchar("role_id", { length: 20 }).notNull(),
+  role_name: varchar("role_name", { length: 100 }).notNull(),
+  created_at: timestamp("created_at").defaultNow(),
+  is_active: boolean("is_active").default(true),
+}, (table) => ({
+  guildRole: unique().on(table.guild_id, table.role_id),
+}));
+
+export const user_activity = pgTable("user_activity", {
+  id: serial("id").primaryKey(),
+  guild_id: varchar("guild_id", { length: 20 }).notNull(),
+  user_id: varchar("user_id", { length: 20 }).notNull(),
+  role_id: varchar("role_id", { length: 20 }).notNull(),
+  message_count: integer("message_count").default(0),
+  vc_minutes: integer("vc_minutes").default(0),
+  total_score: decimal("total_score").default("0"),
+  last_active: timestamp("last_active").defaultNow(),
+}, (table) => ({
+  guildUserRole: unique().on(table.guild_id, table.user_id, table.role_id),
+}));
+
+export const vc_sessions = pgTable("vc_sessions", {
+  id: serial("id").primaryKey(),
+  guild_id: varchar("guild_id", { length: 20 }).notNull(),
+  user_id: varchar("user_id", { length: 20 }).notNull(),
+  channel_id: varchar("channel_id", { length: 20 }).notNull(),
+  joined_at: timestamp("joined_at").defaultNow(),
+  left_at: timestamp("left_at"),
+});
